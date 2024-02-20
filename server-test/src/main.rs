@@ -3,10 +3,16 @@ use std::{
     str::FromStr,
 };
 
-use axum::{response::IntoResponse, routing::get, Router};
+use axum::{
+    body::Body,
+    http::{Response, StatusCode},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
 use clap::Parser;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower::{ServiceBuilder, ServiceExt};
+use tower_http::{services::ServeDir, trace::TraceLayer};
 
 #[derive(Parser, Debug)]
 #[clap(
@@ -20,6 +26,8 @@ struct Opt {
     port: u16,
     #[clap(short = 'l', long = "log", default_value = "debug")]
     log_level: String,
+    #[clap(long = "static-dir", default_value = "./dist")]
+    static_dir: String,
 }
 
 #[tokio::main]
@@ -33,7 +41,10 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/", get(hello))
+        .route("/api/hello", get(hello))
+        .fallback_service(get(|req| async move {
+            ServeDir::new(opt.static_dir).oneshot(req).await
+        }))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     let sock_addr = SocketAddr::from((
