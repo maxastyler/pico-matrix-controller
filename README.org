@@ -1,0 +1,2 @@
+* pico-matrix-controller
+A rust application for controlling a ws2812b LED matrix with a Raspberry Pi Pico over WIFI.
