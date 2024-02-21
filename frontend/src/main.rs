@@ -14,7 +14,10 @@ enum Route {
 fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! {
+        <div>
             <h1>{"Hello Frontend"}</h1>
+        <a href = "/hello-server">{"Go to server"}</a>
+        </div>
         },
         Route::HelloServer => html! {<HelloServer/>},
     }

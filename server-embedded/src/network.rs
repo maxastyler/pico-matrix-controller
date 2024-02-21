@@ -25,8 +25,8 @@ use embassy_sync::waitqueue::WakerRegistration;
 use embassy_time::Instant;
 use smoltcp::iface::{Interface, SocketSet};
 use smoltcp::phy::Medium;
-use smoltcp::wire::HardwareAddress;
 use smoltcp::time::Instant as SmolInstant;
+use smoltcp::wire::HardwareAddress;
 
 use embassy_rp::Peripherals;
 use heapless::Vec;
@@ -139,7 +139,7 @@ pub async fn set_up_network_stack(
     control
         .set_power_management(cyw43::PowerManagementMode::PowerSave)
         .await;
-    let stack = &*make_static!(new(
+    let stack = &*make_static!(Stack::new(
         net_device,
         embassy_net::Config::ipv4_static(embassy_net::StaticConfigV4 {
             address: embassy_net::Ipv4Cidr::new(server_ip_address, 24),
@@ -148,7 +148,6 @@ pub async fn set_up_network_stack(
         }),
         make_static!(embassy_net::StackResources::<WEB_TASK_POOL_SIZE>::new()),
         embassy_rp::clocks::RoscRng.gen(),
-        outside_ip_address
     ));
 
     spawner.must_spawn(net_task(stack));

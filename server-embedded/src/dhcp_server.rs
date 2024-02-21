@@ -160,6 +160,7 @@ impl<
         let len = packet_repr.buffer_len();
 
         packet_repr.emit(&mut packet)?;
+        packet.set_your_ip(address);
         self.socket
             .send_to(
                 &self.data_buffer[..len],
@@ -189,6 +190,7 @@ impl<
         let len = packet_repr.buffer_len();
 
         packet_repr.emit(&mut packet)?;
+	packet.set_your_ip(client_ip);
         self.socket
             .send_to(
                 &self.data_buffer[..len],
@@ -262,6 +264,7 @@ impl<
     ) -> Result<()> {
         let id = client_identifier.unwrap_or(client_hardware_address);
         let mut first_offered_index = None;
+        log::info!("Checking through the assignments, {:?}", transaction_id);
         for (index, assignment) in self.assignments.iter_mut().enumerate() {
             match assignment {
                 // if the lease has been offered to another index, then this can possibly be taken
@@ -292,6 +295,7 @@ impl<
                 }
             }
         }
+        log::info!("OFFER: {:?}", first_offered_index);
         if let Some(i) = first_offered_index {
             *unsafe { self.assignments.get_unchecked_mut(i) } = DhcpAssignment::Offered {
                 identifier: id,

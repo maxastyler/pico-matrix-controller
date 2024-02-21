@@ -10,6 +10,8 @@ axum = "0.7.4"
 axum-server = "0.6.0"
 clap = { version = "4.5.1", features = ["derive"] }
 log = "0.4.20"
+macroquad = "0.4.4"
+piston_window = "0.131.0"
 tokio = { version = "1.36.0", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.1", features = ["full"] }

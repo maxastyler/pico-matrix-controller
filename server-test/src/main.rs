@@ -1,8 +1,3 @@
-use std::{
-    net::{IpAddr, Ipv6Addr, SocketAddr},
-    str::FromStr,
-};
-
 use axum::{
     body::Body,
     http::{Response, StatusCode},
@@ -11,6 +6,15 @@ use axum::{
     Router,
 };
 use clap::Parser;
+use macroquad::prelude::*;
+use macroquad::ui::widgets::Window;
+use piston_window::*;
+use std::{
+    net::{IpAddr, Ipv6Addr, SocketAddr},
+    str::FromStr,
+    thread,
+};
+use tokio::runtime::{Builder, Runtime};
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -30,8 +34,39 @@ struct Opt {
     static_dir: String,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let tokio_rt = spawn_tokio_runtime();
+
+    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", [640, 480])
+        .exit_on_esc(true)
+        .build()
+        .unwrap();
+    while let Some(e) = window.next() {
+        window.draw_2d(&e, |c, g, _device| {
+            clear([1.0; 4], g);
+            rectangle(
+                [1.0, 0.0, 0.0, 1.0], // red
+                [0.0, 0.0, 100.0, 100.0],
+                c.transform,
+                g,
+            );
+        });
+    }
+    tokio_rt.shutdown_background();
+}
+
+fn spawn_tokio_runtime() -> Runtime {
+    let runtime = Builder::new_multi_thread()
+        .worker_threads(4)
+        .enable_all()
+        .build()
+        .unwrap();
+
+    runtime.spawn(start_app());
+    runtime
+}
+
+async fn start_app() {
     let opt = Opt::parse();
 
     if std::env::var("RUST_LOG").is_err() {

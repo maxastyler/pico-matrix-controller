@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+use crate::network::set_up_network_stack;
 use cyw43::NetDriver;
 use defmt as _;
 use defmt_rtt as _;
@@ -10,10 +11,9 @@ use dns_server::dns_server_task;
 use embassy_net::{tcp::TcpSocket, Stack};
 use embassy_time::Timer;
 use embedded_io_async::Write;
+use panic_probe as _;
 use smoltcp::wire::Ipv4Address;
 use web::start_server;
-use crate::network::set_up_network_stack;
-use panic_probe as _;
 
 mod dhcp_server;
 mod dns_packet;
@@ -39,6 +39,14 @@ async fn logger_task(usb: embassy_rp::peripherals::USB) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
 }
 
+#[embassy_executor::task]
+async fn alive() {
+    loop {
+        Timer::after_secs(4).await;
+        log::info!("I'm alive");
+    }
+}
+
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -59,7 +67,9 @@ async fn main(spawner: embassy_executor::Spawner) {
     )
     .await;
 
-    spawner.must_spawn(dhcp_server_task(stack, server_address));
-    spawner.must_spawn(dns_server_task(stack, server_address, outside_address));
-    start_server(&spawner, stack).await;
+    // spawner.must_spawn(dhcp_server_task(stack, server_address));
+    // spawner.must_spawn(dns_server_task(stack, server_address, outside_address));
+    // start_server(&spawner, stack).await;
+    spawner.must_spawn(alive());
+    
 }
