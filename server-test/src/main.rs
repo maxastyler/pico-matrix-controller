@@ -10,11 +10,15 @@ use macroquad::prelude::*;
 use macroquad::ui::widgets::Window;
 use piston_window::*;
 use std::{
+    marker::PhantomData,
     net::{IpAddr, Ipv6Addr, SocketAddr},
     str::FromStr,
     thread,
 };
-use tokio::runtime::{Builder, Runtime};
+use tokio::{
+    runtime::{Builder, Runtime},
+    sync::mpsc::{self, Receiver},
+};
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -34,24 +38,54 @@ struct Opt {
     static_dir: String,
 }
 
-fn main() {
-    let tokio_rt = spawn_tokio_runtime();
+struct DisplayWindow<State, Message> {
+    _state: PhantomData<(State, Message)>,
+    pixel_size: u32,
+    rows: u32,
+    cols: u32,
+}
 
-    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", [640, 480])
+impl<State, Message> DisplayWindow<State, Message> {
+    pub fn new(pixel_size: u32, rows: u32, cols: u32) -> Self {
+        Self {
+            _state: PhantomData,
+            pixel_size,
+
+            rows,
+            cols,
+        }
+    }
+
+    pub fn run(&self, rx: Receiver<Message>) {
+        let mut window: PistonWindow = WindowSettings::new(
+            "Hello Piston!",
+            [self.cols * self.pixel_size, self.rows * self.pixel_size],
+        )
         .exit_on_esc(true)
         .build()
         .unwrap();
-    while let Some(e) = window.next() {
-        window.draw_2d(&e, |c, g, _device| {
-            clear([1.0; 4], g);
-            rectangle(
-                [1.0, 0.0, 0.0, 1.0], // red
-                [0.0, 0.0, 100.0, 100.0],
-                c.transform,
-                g,
-            );
-        });
+
+        while let Some(e) = window.next() {
+            window.draw_2d(&e, |c, g, _device| {
+                clear([1.0; 4], g);
+                rectangle(
+                    [1.0, 0.0, 0.0, 1.0], // red
+                    [0.0, 0.0, 100.0, 100.0],
+                    c.transform,
+                    g,
+                );
+            });
+        }
     }
+}
+
+fn main() {
+    let tokio_rt = spawn_tokio_runtime();
+
+    let (tx, rx) = mpsc::channel::<()>(10);
+
+    DisplayWindow::<(), ()>::new(30, 16, 16).run(rx);
+
     tokio_rt.shutdown_background();
 }
 
