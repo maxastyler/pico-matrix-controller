@@ -1,3 +1,12 @@
+#![feature(adt_const_params)]
+
+use std::{
+    marker::PhantomData,
+    net::{IpAddr, Ipv6Addr, SocketAddr},
+    str::FromStr,
+    thread,
+};
+
 use axum::{
     body::Body,
     http::{Response, StatusCode},
@@ -8,13 +17,9 @@ use axum::{
 use clap::Parser;
 use macroquad::prelude::*;
 use macroquad::ui::widgets::Window;
+use piston_window::ellipse::circle;
 use piston_window::*;
-use std::{
-    marker::PhantomData,
-    net::{IpAddr, Ipv6Addr, SocketAddr},
-    str::FromStr,
-    thread,
-};
+use tokio::sync::mpsc::Sender;
 use tokio::{
     runtime::{Builder, Runtime},
     sync::mpsc::{self, Receiver},
@@ -43,22 +48,26 @@ struct DisplayWindow<State, Message> {
     pixel_size: u32,
     rows: u32,
     cols: u32,
+    pixel_buffer: Vec<[f32; 4]>,
+    pixel_offset: f64,
 }
 
 impl<State, Message> DisplayWindow<State, Message> {
-    pub fn new(pixel_size: u32, rows: u32, cols: u32) -> Self {
+    pub fn new(pixel_size: u32, rows: u32, cols: u32, pixel_offset: f64) -> Self {
+        assert!(pixel_offset <= 1.0);
         Self {
             _state: PhantomData,
             pixel_size,
-
             rows,
             cols,
+            pixel_buffer: vec![[0.0, 0.0, 0.0, 1.0]; (rows * cols) as usize],
+            pixel_offset,
         }
     }
 
     pub fn run(&self, rx: Receiver<Message>) {
         let mut window: PistonWindow = WindowSettings::new(
-            "Hello Piston!",
+            "Matrix test server",
             [self.cols * self.pixel_size, self.rows * self.pixel_size],
         )
         .exit_on_esc(true)
@@ -68,39 +77,52 @@ impl<State, Message> DisplayWindow<State, Message> {
         while let Some(e) = window.next() {
             window.draw_2d(&e, |c, g, _device| {
                 clear([1.0; 4], g);
-                rectangle(
-                    [1.0, 0.0, 0.0, 1.0], // red
-                    [0.0, 0.0, 100.0, 100.0],
-                    c.transform,
-                    g,
-                );
+                let offset = self.pixel_size as f64 * self.pixel_offset;
+                let square_size = self.pixel_size as f64 * (1.0 - self.pixel_offset * 2.0);
+                for ((row, col), colours) in (0..self.rows)
+                    .flat_map(|r| {
+                        (0..self.cols).map(move |c| {
+                            (
+                                (r * self.pixel_size) as f64 + offset,
+                                (c * self.pixel_size) as f64 + offset,
+                            )
+                        })
+                    })
+                    .zip(self.pixel_buffer.iter())
+                {
+                    rectangle(
+                        *colours, // red
+                        [col, row, square_size, square_size],
+                        c.transform,
+                        g,
+                    );
+                }
             });
         }
     }
 }
 
 fn main() {
-    let tokio_rt = spawn_tokio_runtime();
-
     let (tx, rx) = mpsc::channel::<()>(10);
+    let tokio_rt = spawn_tokio_runtime(tx);
 
-    DisplayWindow::<(), ()>::new(30, 16, 16).run(rx);
+    DisplayWindow::<(), ()>::new(30, 16, 16, 0.3).run(rx);
 
     tokio_rt.shutdown_background();
 }
 
-fn spawn_tokio_runtime() -> Runtime {
+fn spawn_tokio_runtime<Message: Send + 'static>(tx: Sender<Message>) -> Runtime {
     let runtime = Builder::new_multi_thread()
         .worker_threads(4)
         .enable_all()
         .build()
         .unwrap();
 
-    runtime.spawn(start_app());
+    runtime.spawn(start_app(tx));
     runtime
 }
 
-async fn start_app() {
+async fn start_app<Message>(tx: Sender<Message>) {
     let opt = Opt::parse();
 
     if std::env::var("RUST_LOG").is_err() {
