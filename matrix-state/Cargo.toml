@@ -1,0 +1,11 @@
+[package]
+name = "matrix-state"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+postcard = "1.0.8"
+# bitcode = { version = "0.5.1", features = ["serde", "derive", "bitcode_derive"], default-features = false }
+serde = { version = "1.0.197", default-features = false, features = ["derive"]}

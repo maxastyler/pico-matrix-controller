@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+
 use crate::network::set_up_network_stack;
 use cyw43::NetDriver;
 use defmt as _;
@@ -14,6 +15,7 @@ use embedded_io_async::Write;
 use panic_probe as _;
 use smoltcp::wire::Ipv4Address;
 use web::start_server;
+use matrix_state;
 
 mod dhcp_server;
 mod dns_packet;
@@ -50,6 +52,7 @@ async fn alive() {
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
     let p = embassy_rp::init(Default::default());
+    matrix_state::add(2, 3);
 
     spawner.must_spawn(logger_task(p.USB));
     let server_address = Ipv4Address::new(169, 254, 1, 1);
