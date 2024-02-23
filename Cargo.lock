@@ -2527,6 +2527,7 @@ checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
 name = "matrix-state"
 version = "0.1.0"
 dependencies = [
+ "message-derive",
  "postcard",
  "serde",
 ]
@@ -2553,6 +2554,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "message-derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.50",
 ]
 
 [[package]]
@@ -3643,6 +3653,7 @@ dependencies = [
  "clap",
  "log",
  "macroquad",
+ "matrix-state",
  "piston_window",
  "tokio",
  "tower",

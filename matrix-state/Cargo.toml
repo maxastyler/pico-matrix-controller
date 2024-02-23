@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 postcard = "1.0.8"
-# bitcode = { version = "0.5.1", features = ["serde", "derive", "bitcode_derive"], default-features = false }
 serde = { version = "1.0.197", default-features = false, features = ["derive"]}
+message-derive = {path = "../message-derive"}

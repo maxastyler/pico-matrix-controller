@@ -1,5 +1,6 @@
 #![feature(adt_const_params)]
 
+use matrix_state::{MatrixDisplay, RGB8};
 use std::{
     marker::PhantomData,
     net::{IpAddr, Ipv6Addr, SocketAddr},
@@ -43,24 +44,46 @@ struct Opt {
     static_dir: String,
 }
 
-struct DisplayWindow<State, Message> {
+struct DisplayWindow<State, Message, const ROWS: usize, const COLS: usize> {
     _state: PhantomData<(State, Message)>,
     pixel_size: u32,
-    rows: u32,
-    cols: u32,
-    pixel_buffer: Vec<[f32; 4]>,
+    pixel_buffer: Vec<RGB8>,
     pixel_offset: f64,
 }
 
-impl<State, Message> DisplayWindow<State, Message> {
-    pub fn new(pixel_size: u32, rows: u32, cols: u32, pixel_offset: f64) -> Self {
+impl<State, Message, const ROWS: usize, const COLS: usize> MatrixDisplay
+    for DisplayWindow<State, Message, ROWS, COLS>
+{
+    fn get_mut(&mut self, row: usize, col: usize) -> Option<&mut RGB8> {
+        self.pixel_buffer.get_mut(row * COLS + col)
+    }
+
+    fn get(&self, row: usize, col: usize) -> Option<&RGB8> {
+        self.pixel_buffer.get(row * COLS + col)
+    }
+
+    fn size(&self) -> (usize, usize) {
+        (ROWS, COLS)
+    }
+}
+
+impl<State, Message, const ROWS: usize, const COLS: usize>
+    DisplayWindow<State, Message, ROWS, COLS>
+{
+    pub fn new(pixel_size: u32, pixel_offset: f64) -> Self {
         assert!(pixel_offset <= 1.0);
         Self {
             _state: PhantomData,
             pixel_size,
-            rows,
-            cols,
-            pixel_buffer: vec![[0.0, 0.0, 0.0, 1.0]; (rows * cols) as usize],
+            pixel_buffer: vec![
+                RGB8 {
+                    padding: 0,
+                    r: 0,
+                    g: 0,
+                    b: 0
+                };
+                (ROWS * COLS) as usize
+            ],
             pixel_offset,
         }
     }
@@ -68,7 +91,7 @@ impl<State, Message> DisplayWindow<State, Message> {
     pub fn run(&self, rx: Receiver<Message>) {
         let mut window: PistonWindow = WindowSettings::new(
             "Matrix test server",
-            [self.cols * self.pixel_size, self.rows * self.pixel_size],
+            [COLS as u32 * self.pixel_size, ROWS as u32 * self.pixel_size],
         )
         .exit_on_esc(true)
         .build()
@@ -79,19 +102,19 @@ impl<State, Message> DisplayWindow<State, Message> {
                 clear([1.0; 4], g);
                 let offset = self.pixel_size as f64 * self.pixel_offset;
                 let square_size = self.pixel_size as f64 * (1.0 - self.pixel_offset * 2.0);
-                for ((row, col), colours) in (0..self.rows)
+                for ((row, col), colour) in (0..ROWS)
                     .flat_map(|r| {
-                        (0..self.cols).map(move |c| {
+                        (0..COLS).map(move |c| {
                             (
-                                (r * self.pixel_size) as f64 + offset,
-                                (c * self.pixel_size) as f64 + offset,
+                                (r as u32 * self.pixel_size) as f64 + offset,
+                                (c as u32 * self.pixel_size) as f64 + offset,
                             )
                         })
                     })
                     .zip(self.pixel_buffer.iter())
                 {
                     rectangle(
-                        *colours, // red
+                        transform_colour(*colour),
                         [col, row, square_size, square_size],
                         c.transform,
                         g,
@@ -102,11 +125,15 @@ impl<State, Message> DisplayWindow<State, Message> {
     }
 }
 
+fn transform_colour(RGB8 { r, b, g, padding }: RGB8) -> [f32; 4] {
+    [r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0]
+}
+
 fn main() {
     let (tx, rx) = mpsc::channel::<()>(10);
     let tokio_rt = spawn_tokio_runtime(tx);
 
-    DisplayWindow::<(), ()>::new(30, 16, 16, 0.3).run(rx);
+    DisplayWindow::<(), (), 16, 16>::new(30, 0.3).run(rx);
 
     tokio_rt.shutdown_background();
 }
