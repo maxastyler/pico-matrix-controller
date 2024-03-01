@@ -45,9 +45,14 @@ pub trait MatrixDisplay {
 
 #[macro_export]
 macro_rules! create_matrix_state {
-    ($name: ident; $($i: ident),*) => {
+    ($name: ident; $message_type_name: ident; $($i: ident),*) => {
+	use $crate::{FrameTime, Updateable};
 	pub enum $name {
 	    $($i($i)),*
+	}
+
+	pub enum $message_type_name {
+	    $($i(<$i as Updateable>::Message)),*
 	}
 
 	impl FrameTime for $name {
@@ -62,7 +67,6 @@ macro_rules! create_matrix_state {
 
 #[cfg(test)]
 mod test {
-    use crate::FrameTime;
     #[test]
     fn is_true() {
         assert!(true)
@@ -71,18 +75,41 @@ mod test {
     #[test]
     fn test_create_matrix_state() {
         struct Hi;
+        impl Updateable for Hi {
+            type Message = u32;
+
+            fn update<D: crate::MatrixDisplay>(
+                &mut self,
+                message: Option<Self::Message>,
+                display: &mut D,
+            ) {
+                todo!()
+            }
+        }
         impl FrameTime for Hi {
             fn frame_time(&self) -> u64 {
                 3
             }
         }
         struct There;
+        impl Updateable for There {
+            type Message = &'static str;
+
+            fn update<D: crate::MatrixDisplay>(
+                &mut self,
+                message: Option<Self::Message>,
+                display: &mut D,
+            ) {
+                todo!()
+            }
+        }
         impl FrameTime for There {
             fn frame_time(&self) -> u64 {
                 2
             }
         }
-        create_matrix_state!(Hello; Hi, There);
+        create_matrix_state!(Hello; HelloMessage; Hi, There);
         assert_eq!(Hello::Hi(Hi).frame_time(), 3);
+        HelloMessage::Hi(32);
     }
 }
