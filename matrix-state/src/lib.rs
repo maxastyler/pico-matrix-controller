@@ -9,11 +9,19 @@ pub struct RGB8 {
     pub g: u8,
 }
 
-pub trait MatrixState {
+pub trait FrameTime {
+    fn frame_time(&self) -> u64;
+}
+
+pub trait Updateable {
     type Message;
-    /// The amount of time to pause between frames, in milliseconds
-    fn frame_spacing(&self) -> u64;
+
     fn update<D: MatrixDisplay>(&mut self, message: Option<Self::Message>, display: &mut D);
+}
+
+pub struct MatrixState<ImageState> {
+    im: ImageState,
+    brightness: f32,
 }
 
 pub trait MatrixDisplay {
@@ -35,10 +43,46 @@ pub trait MatrixDisplay {
     }
 }
 
+#[macro_export]
+macro_rules! create_matrix_state {
+    ($name: ident; $($i: ident),*) => {
+	pub enum $name {
+	    $($i($i)),*
+	}
+
+	impl FrameTime for $name {
+	    fn frame_time(&self) -> u64 {
+		match self {
+		    $($name::$i(inner) => {inner.frame_time()})*
+		}
+	    }
+	}
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use crate::FrameTime;
     #[test]
     fn is_true() {
         assert!(true)
+    }
+
+    #[test]
+    fn test_create_matrix_state() {
+        struct Hi;
+        impl FrameTime for Hi {
+            fn frame_time(&self) -> u64 {
+                3
+            }
+        }
+        struct There;
+        impl FrameTime for There {
+            fn frame_time(&self) -> u64 {
+                2
+            }
+        }
+        create_matrix_state!(Hello; Hi, There);
+        assert_eq!(Hello::Hi(Hi).frame_time(), 3);
     }
 }
