@@ -2,7 +2,6 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-
 use crate::network::set_up_network_stack;
 use cyw43::NetDriver;
 use defmt as _;
@@ -12,10 +11,10 @@ use dns_server::dns_server_task;
 use embassy_net::{tcp::TcpSocket, Stack};
 use embassy_time::Timer;
 use embedded_io_async::Write;
+use matrix_state;
 use panic_probe as _;
 use smoltcp::wire::Ipv4Address;
 use web::start_server;
-use matrix_state;
 
 mod dhcp_server;
 mod dns_packet;
@@ -26,7 +25,7 @@ mod web;
 embassy_rp::bind_interrupts!(
     struct Irqs {
         PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<embassy_rp::peripherals::PIO0>;
-    USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
+	USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
     }
 );
 
@@ -74,5 +73,4 @@ async fn main(spawner: embassy_executor::Spawner) {
     // spawner.must_spawn(dns_server_task(stack, server_address, outside_address));
     // start_server(&spawner, stack).await;
     spawner.must_spawn(alive());
-    
 }
