@@ -46,13 +46,31 @@ pub trait MatrixDisplay {
 #[macro_export]
 macro_rules! create_matrix_state {
     ($name: ident; $message_type_name: ident; $($i: ident),*) => {
-	use $crate::{FrameTime, Updateable};
+	use $crate::{FrameTime, Updateable, MatrixDisplay};
+	use serde::{Serialize, Deserialize};
 	pub enum $name {
 	    $($i($i)),*
 	}
 
+	#[derive(Serialize, Deserialize)]
 	pub enum $message_type_name {
 	    $($i(<$i as Updateable>::Message)),*
+	}
+
+	impl Updateable for $name {
+	    type Message = $message_type_name;
+
+	    fn update<D: MatrixDisplay>(&mut self, message: Option<Self::Message>, display: &mut D) {
+		match self {
+		    $($name::$i(inner) => {
+			let message = match message {
+			    Some(Self::Message::$i(inner)) => Some(inner),
+			    _ => None
+			};
+			inner.update(message, display);
+		    })*
+		}
+	    }
 	}
 
 	impl FrameTime for $name {
@@ -67,6 +85,7 @@ macro_rules! create_matrix_state {
 
 #[cfg(test)]
 mod test {
+    use crate::{FrameTime, Updateable};
     #[test]
     fn is_true() {
         assert!(true)
@@ -93,7 +112,7 @@ mod test {
         }
         struct There;
         impl Updateable for There {
-            type Message = &'static str;
+            type Message = f64;
 
             fn update<D: crate::MatrixDisplay>(
                 &mut self,
