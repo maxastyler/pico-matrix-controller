@@ -1,5 +1,7 @@
 #![no_std]
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Default, Debug, Copy, Clone)]
 #[repr(C, align(4))]
 pub struct RGB8 {
@@ -22,6 +24,27 @@ pub trait Updateable {
 pub struct MatrixState<ImageState> {
     im: ImageState,
     brightness: f32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum MatrixStateMessage<ImageStateMessage> {
+    UpdateBrightness(f32),
+    UpdateImage(ImageStateMessage),
+}
+
+impl<ImageState, ImageStateMessage> Updateable for MatrixState<ImageState>
+where
+    ImageState: Updateable<Message = ImageStateMessage>,
+{
+    type Message = MatrixStateMessage<ImageStateMessage>;
+
+    fn update<D: MatrixDisplay>(&mut self, message: Option<Self::Message>, display: &mut D) {
+        match message {
+            Some(MatrixStateMessage::UpdateBrightness(b)) => (),
+            Some(MatrixStateMessage::UpdateImage(im)) => self.im.update(Some(im), display),
+            None => self.im.update(None, display),
+        };
+    }
 }
 
 pub trait MatrixDisplay {
@@ -129,6 +152,5 @@ mod test {
         }
         create_matrix_state!(Hello; HelloMessage; Hi, There);
         assert_eq!(Hello::Hi(Hi).frame_time(), 3);
-        HelloMessage::Hi(32);
     }
 }
