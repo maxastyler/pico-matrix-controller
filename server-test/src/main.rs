@@ -88,7 +88,7 @@ impl<State, Message, const ROWS: usize, const COLS: usize>
         }
     }
 
-    pub fn run(&self, rx: Receiver<Message>) {
+    pub fn run(&mut self, rx: Receiver<Message>) {
         let mut window: PistonWindow = WindowSettings::new(
             "Matrix test server",
             [COLS as u32 * self.pixel_size, ROWS as u32 * self.pixel_size],
