@@ -6,10 +6,12 @@ use std::{
     net::{IpAddr, Ipv6Addr, SocketAddr},
     str::FromStr,
     thread,
+    time::Duration,
 };
 
 use axum::{
     body::Body,
+    extract::{ws::WebSocket, ConnectInfo, WebSocketUpgrade},
     http::{Response, StatusCode},
     response::IntoResponse,
     routing::get,
@@ -20,11 +22,11 @@ use macroquad::prelude::*;
 use macroquad::ui::widgets::Window;
 use piston_window::ellipse::circle;
 use piston_window::*;
-use tokio::sync::mpsc::Sender;
 use tokio::{
     runtime::{Builder, Runtime},
     sync::mpsc::{self, Receiver},
 };
+use tokio::{sync::mpsc::Sender, time::sleep};
 use tower::{ServiceBuilder, ServiceExt};
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
@@ -97,6 +99,8 @@ impl<State, Message, const ROWS: usize, const COLS: usize>
         .build()
         .unwrap();
 
+        let pixel_size = self.pixel_size;
+
         while let Some(e) = window.next() {
             window.draw_2d(&e, |c, g, _device| {
                 clear([1.0; 4], g);
@@ -106,8 +110,8 @@ impl<State, Message, const ROWS: usize, const COLS: usize>
                     .flat_map(|r| {
                         (0..COLS).map(move |c| {
                             (
-                                (r as u32 * self.pixel_size) as f64 + offset,
-                                (c as u32 * self.pixel_size) as f64 + offset,
+                                (r as u32 * pixel_size) as f64 + offset,
+                                (c as u32 * pixel_size) as f64 + offset,
                             )
                         })
                     })
@@ -159,7 +163,7 @@ async fn start_app<Message>(tx: Sender<Message>) {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/api/hello", get(hello))
+        .route("/ws/ws", get(ws_handler))
         .fallback_service(get(|req| async move {
             ServeDir::new(opt.static_dir).oneshot(req).await
         }))
@@ -180,4 +184,21 @@ async fn start_app<Message>(tx: Sender<Message>) {
 
 async fn hello() -> impl IntoResponse {
     "hello from server!"
+}
+
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+}
+
+async fn handle_socket(mut socket: WebSocket, who: SocketAddr) {
+    loop {
+        sleep(Duration::from_secs(1)).await;
+        socket
+            .send(axum::extract::ws::Message::Text("Hiiii".into()))
+            .await
+            .unwrap();
+    }
 }

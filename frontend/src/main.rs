@@ -1,5 +1,8 @@
+use futures_util::{SinkExt, StreamExt};
+use gloo_console::log;
 use gloo_net::http::Request;
-use gloo_net::websocket;
+use gloo_net::websocket::{futures::WebSocket, Message};
+use gloo_timers::future::TimeoutFuture;
 use wasm_bindgen_futures::spawn_local;
 use yew::prelude::*;
 use yew_router::{BrowserRouter, Routable, Switch};
@@ -8,19 +11,11 @@ use yew_router::{BrowserRouter, Routable, Switch};
 enum Route {
     #[at("/")]
     Home,
-    #[at("/hello-server")]
-    HelloServer,
 }
 
 fn switch(routes: Route) -> Html {
     match routes {
-        Route::Home => html! {
-        <div>
-            <h1>{"Hello Frontend"}</h1>
-        <a href = "/hello-server">{"Go to server"}</a>
-        </div>
-        },
-        Route::HelloServer => html! {<HelloServer/>},
+        Route::Home => html! {<Main/>},
     }
 }
 
@@ -29,8 +24,30 @@ fn App() -> Html {
     html! {
     <BrowserRouter>
         <Switch<Route>render={switch}/>
-        </BrowserRouter>
+    </BrowserRouter>
     }
+}
+
+#[function_component(Main)]
+fn main() -> Html {
+    use_effect_with((), move |_| {
+        match WebSocket::open("ws://127.0.0.1:8080/ws/ws") {
+            Ok(ws) => {
+                let (mut write, mut read) = ws.split();
+                spawn_local(async move {
+                    while let Some(m) = read.next().await {
+                        log!(format!("Got message: {:?}", m));
+                        write.send(Message::Text("Hi".into())).await.unwrap();
+                    }
+                    log!("Bye bye socket");
+                })
+            }
+            Err(e) => {
+                log!(format!("Couldn't open websocket: {:?}", e));
+            }
+        }
+    });
+    html! {"Hello"}
 }
 
 #[function_component(HelloServer)]

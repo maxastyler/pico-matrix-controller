@@ -1,3 +1,0 @@
-[workspace]
-members = ["server-test", "server-embedded", "frontend", "matrix-state", "message-derive"]
-resolver = "2"

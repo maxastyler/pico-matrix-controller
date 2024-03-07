@@ -51,7 +51,6 @@ async fn alive() {
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
     let p = embassy_rp::init(Default::default());
-    matrix_state::add(2, 3);
 
     spawner.must_spawn(logger_task(p.USB));
     let server_address = Ipv4Address::new(169, 254, 1, 1);

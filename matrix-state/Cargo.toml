@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 postcard = "1.0.8"
 serde = { version = "1.0.197", default-features = false, features = ["derive"]}
-message-derive = {path = "../message-derive"}
+

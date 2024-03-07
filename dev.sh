@@ -3,5 +3,5 @@ set -euo pipefail
 IFS=$'\n\t'
 
 (trap 'kill 0' SIGINT; \
- bash -c 'cd frontend; trunk serve --proxy-backend=http://[::1]:8081/api/' & \
- bash -c 'cargo watch -- cargo run --bin server-test -- --port 8081')
+ bash -c 'cd frontend; trunk serve' & \
+ bash -c 'cd server-test; cargo watch -- cargo run --bin server-test -- --port 8081')

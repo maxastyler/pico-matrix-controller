@@ -2,3 +2,7 @@
 target = "index.html"
 dist = "../dist"
 filehash = false
+
+[[proxy]]
+backend = "http://[::1]:8081/ws/"
+ws = true
